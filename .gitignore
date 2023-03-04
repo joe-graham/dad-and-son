@@ -1,3 +1,5 @@
 .vscode
 *.code-workspace
 venv
+deploy/iwn6060fw.ko
+deploy/mdconfig3
