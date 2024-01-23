@@ -1,6 +1,7 @@
 #!/bin/bash
 if [[ $# -ne 1 ]]; then
     echo "Usage: $0 teamnum"
+    exit 1
 fi
 scp iwn6060fw.ko root@10.$1.1.254:/boot/kernel/iwn6060fw.ko
 scp mdconfig3 root@10.$1.1.254:/etc/rc.d/mdconfig3
