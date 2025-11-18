@@ -1,6 +1,6 @@
 # dad_son
 
-Malware that listens for ICMP echo requests with a code of 1 and sends back a shell to that IP (this is called `son`), and a FreeBSD kernel module that protects that listener/shell giver (known as `dad`).
+Malware that listens for ICMP echo requests with a code of 1 and sends back a shell to that IP (this is called `son`), and a FreeBSD kernel module that protects that listener/shell giver (known as `dad`). This code is for educational purposes only.
 
 ## Requirements
 
